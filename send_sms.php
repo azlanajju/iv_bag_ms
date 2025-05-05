@@ -1,32 +1,46 @@
 <?php
 require_once 'config.php';
+require_once __DIR__ . '/vendor/autoload.php'; // Twilio SDK
 
-// Function to send SMS using a hypothetical SMS gateway
+use Twilio\Rest\Client;
+
+// Function to send SMS using Twilio
 function sendSMS($phoneNumber, $message)
 {
-    // Replace these with your actual SMS gateway credentials
-    $apiKey = 'YOUR_SMS_GATEWAY_API_KEY';
-    $senderId = 'YOUR_SENDER_ID';
+    // Your Twilio credentials
+    $accountSid = 'ACd9889979abc04d9714261e6a4c757f15';
+    $authToken = '61e8be9c9e473f0084e20bfc1aad2523';
+    $twilioNumber = '+916361557581'; // Your Twilio phone number in E.164 format
 
-    // Example using a hypothetical SMS API
-    $url = "https://api.smsgateway.com/send";
-    $data = [
-        'api_key' => $apiKey,
-        'sender_id' => $senderId,
-        'to' => $phoneNumber,
-        'message' => $message
-    ];
+    try {
+        // Initialize Twilio client
+        $client = new Client($accountSid, $authToken);
 
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        // Format phone number to E.164 format if needed
+        if (!preg_match('/^\+/', $phoneNumber)) {
+            $phoneNumber = '+' . $phoneNumber;
+        }
 
-    $response = curl_exec($ch);
-    curl_close($ch);
+        // Send SMS
+        $message = $client->messages->create(
+            $phoneNumber, // To
+            [
+                'from' => $twilioNumber,
+                'body' => $message
+            ]
+        );
 
-    return $response;
+        return [
+            'success' => true,
+            'message_sid' => $message->sid,
+            'status' => $message->status
+        ];
+    } catch (Exception $e) {
+        return [
+            'success' => false,
+            'error' => $e->getMessage()
+        ];
+    }
 }
 
 // Handle POST request
@@ -68,14 +82,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception('Invalid status');
         }
 
-        // Send SMS
+        // Send SMS using Twilio
         $result = sendSMS($device['NurseCallNumber'], $message);
+
+        if (!$result['success']) {
+            throw new Exception('Failed to send SMS: ' . $result['error']);
+        }
 
         // Return success response
         header('Content-Type: application/json');
         echo json_encode([
             'success' => true,
             'message' => 'SMS notification sent successfully',
+            'twilio' => [
+                'message_sid' => $result['message_sid'],
+                'status' => $result['status']
+            ],
             'device' => [
                 'id' => $deviceId,
                 'name' => $device['DeviceName'],

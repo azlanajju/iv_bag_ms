@@ -524,16 +524,6 @@ $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
             const timeElapsedElement = document.querySelector(`#device-${deviceId} .time-value`);
             const deviceCard = document.querySelector(`#device-${deviceId}`);
 
-            // Debug: Check if elements exist
-            console.log('Found elements:', {
-                weightElement: !!weightElement,
-                progressBar: !!progressBar,
-                updateTime: !!updateTime,
-                updatingIndicator: !!updatingIndicator,
-                dripSpeedElement: !!dripSpeedElement,
-                timeElapsedElement: !!timeElapsedElement
-            });
-
             try {
                 updatingIndicator.style.display = 'inline-block';
 
