@@ -11,6 +11,7 @@ CREATE TABLE IV_Device_Info (
     HasBatteryBackupMonitoring BOOLEAN,
     SupportsOTAUpdates BOOLEAN,
     HasNurseCallIntegration BOOLEAN,
+    NurseCallNumber VARCHAR(50),
     startTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     LastUpdated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

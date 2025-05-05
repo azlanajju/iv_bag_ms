@@ -288,6 +288,44 @@ $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
         ::-webkit-scrollbar-thumb:hover {
             background: var(--primary-color);
         }
+
+        .half-weight-alert {
+            animation: pulse-warning 2s infinite;
+            border-color: var(--warning-color) !important;
+        }
+
+        .empty-alert {
+            animation: pulse-critical 1s infinite;
+            border-color: var(--danger-color) !important;
+        }
+
+        @keyframes pulse-warning {
+            0% {
+                box-shadow: 0 0 0 0 rgba(241, 196, 15, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(241, 196, 15, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(241, 196, 15, 0);
+            }
+        }
+
+        @keyframes pulse-critical {
+            0% {
+                box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(231, 76, 60, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+            }
+        }
     </style>
 </head>
 
@@ -449,7 +487,33 @@ $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
             return Math.max(0, dripSpeed); // Ensure non-negative value
         }
 
-        // Function to update device weight
+        // Add this at the top of the script section, before the updateDeviceWeight function
+        const alertedDevices = new Set();
+        const emptyAlertedDevices = new Set();
+
+        // Function to send SMS notification
+        async function sendSMSNotification(deviceId, status) {
+            try {
+                const response = await fetch('send_sms.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        deviceId: deviceId,
+                        status: status
+                    })
+                });
+
+                const result = await response.json();
+                if (!result.success) {
+                    console.error('Failed to send SMS notification:', result.error);
+                }
+            } catch (error) {
+                console.error('Error sending SMS notification:', error);
+            }
+        }
+
         async function updateDeviceWeight(deviceId, ipAddress, initialWeight, startTime) {
             console.log(`Updating device ${deviceId} with IP ${ipAddress}`);
             const weightElement = document.querySelector(`#device-${deviceId} .current-weight .weight-number`);
@@ -458,6 +522,7 @@ $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
             const updatingIndicator = document.querySelector(`#device-${deviceId} .updating-indicator`);
             const dripSpeedElement = document.querySelector(`#device-${deviceId} .drip-speed-value`);
             const timeElapsedElement = document.querySelector(`#device-${deviceId} .time-value`);
+            const deviceCard = document.querySelector(`#device-${deviceId}`);
 
             // Debug: Check if elements exist
             console.log('Found elements:', {
@@ -510,6 +575,27 @@ $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 const percentage = (data.weight / initialWeight) * 100;
                 console.log('Calculated percentage:', percentage);
+
+                // Check for weight threshold alerts
+                const deviceName = document.querySelector(`#device-${deviceId} .device-name`).textContent;
+
+                // 50% threshold alert
+                if (data.weight <= initialWeight / 2 && !alertedDevices.has(deviceId)) {
+                    alert(`Warning: Device "${deviceName}" (ID: ${deviceId}) has reached 50% of its initial weight!`);
+                    alertedDevices.add(deviceId);
+                    deviceCard.classList.add('half-weight-alert');
+                    // Send SMS notification
+                    await sendSMSNotification(deviceId, 'half');
+                }
+
+                // Empty threshold alert
+                if (data.weight <= 0 && !emptyAlertedDevices.has(deviceId)) {
+                    alert(`CRITICAL: Device "${deviceName}" (ID: ${deviceId}) is now empty!`);
+                    emptyAlertedDevices.add(deviceId);
+                    deviceCard.classList.add('empty-alert');
+                    // Send SMS notification
+                    await sendSMSNotification(deviceId, 'empty');
+                }
 
                 // Update weight
                 weightElement.textContent = data.weight.toFixed(2);
