@@ -451,6 +451,7 @@ $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Function to update device weight
         async function updateDeviceWeight(deviceId, ipAddress, initialWeight, startTime) {
+            console.log(`Updating device ${deviceId} with IP ${ipAddress}`);
             const weightElement = document.querySelector(`#device-${deviceId} .current-weight .weight-number`);
             const progressBar = document.querySelector(`#device-${deviceId} .progress-bar`);
             const updateTime = document.querySelector(`#device-${deviceId} .update-time`);
@@ -458,33 +459,81 @@ $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
             const dripSpeedElement = document.querySelector(`#device-${deviceId} .drip-speed-value`);
             const timeElapsedElement = document.querySelector(`#device-${deviceId} .time-value`);
 
+            // Debug: Check if elements exist
+            console.log('Found elements:', {
+                weightElement: !!weightElement,
+                progressBar: !!progressBar,
+                updateTime: !!updateTime,
+                updatingIndicator: !!updatingIndicator,
+                dripSpeedElement: !!dripSpeedElement,
+                timeElapsedElement: !!timeElapsedElement
+            });
+
             try {
                 updatingIndicator.style.display = 'inline-block';
-                const response = await fetch(`http://${ipAddress}/data`);
+
+                // Construct the correct URL based on the IP address
+                let fetchUrl;
+                if (ipAddress.includes('localhost')) {
+                    fetchUrl = `http://${ipAddress}/data`;
+                } else {
+                    fetchUrl = `http://${ipAddress}:3000/data`;
+                }
+
+                console.log(`Fetching from: ${fetchUrl}`);
+
+                const response = await fetch(fetchUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Origin': window.location.origin
+                    },
+                    mode: 'cors',
+                    credentials: 'omit'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Response was not JSON');
+                }
+
                 const data = await response.json();
+                console.log('Received data:', data);
 
-                const currentWeight = data.weight;
-                const percentage = (currentWeight / initialWeight) * 100;
+                if (typeof data.weight !== 'number' || isNaN(data.weight)) {
+                    throw new Error('Invalid weight data received');
+                }
 
-                weightElement.textContent = currentWeight.toFixed(2);
+                const percentage = (data.weight / initialWeight) * 100;
+                console.log('Calculated percentage:', percentage);
+
+                // Update weight
+                weightElement.textContent = data.weight.toFixed(2);
                 progressBar.style.width = `${percentage}%`;
                 progressBar.setAttribute('aria-valuenow', percentage);
 
-                // Calculate and update drip speed
-                const dripSpeed = calculateDripSpeed(initialWeight, currentWeight, startTime);
-                dripSpeedElement.textContent = dripSpeed.toFixed(1);
+                // Calculate drip speed (ml/hour)
+                const timeElapsed = (new Date() - new Date(startTime)) / (1000 * 60 * 60); // hours
+                const dripSpeed = (initialWeight - data.weight) / timeElapsed;
+                dripSpeedElement.textContent = dripSpeed.toFixed(2);
 
                 // Update time elapsed
-                timeElapsedElement.textContent = formatTimeElapsed(startTime);
+                const hours = Math.floor(timeElapsed);
+                const minutes = Math.floor((timeElapsed - hours) * 60);
+                timeElapsedElement.textContent = `${hours}h ${minutes}m`;
 
-                // Update status based on weight
+                // Update status badge
                 const statusBadge = document.querySelector(`#device-${deviceId} .status-badge`);
-                if (percentage < 10) {
+                if (data.weight <= 0) {
                     statusBadge.className = 'status-badge status-critical';
-                    statusBadge.textContent = 'Critical';
-                } else if (percentage < 30) {
+                    statusBadge.textContent = 'Empty';
+                } else if (data.weight < initialWeight * 0.2) {
                     statusBadge.className = 'status-badge status-warning';
-                    statusBadge.textContent = 'Warning';
+                    statusBadge.textContent = 'Low';
                 } else {
                     statusBadge.className = 'status-badge status-active';
                     statusBadge.textContent = 'Active';
@@ -499,6 +548,11 @@ $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 weightElement.textContent = 'Error';
                 dripSpeedElement.textContent = '--';
                 timeElapsedElement.textContent = '--';
+
+                // Show error in status badge
+                const statusBadge = document.querySelector(`#device-${deviceId} .status-badge`);
+                statusBadge.className = 'status-badge status-critical';
+                statusBadge.textContent = 'Error';
             } finally {
                 updatingIndicator.style.display = 'none';
             }
@@ -515,7 +569,7 @@ $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
         updateAllDevices();
 
         // Update every 5 seconds
-        setInterval(updateAllDevices, 5000);
+        setInterval(updateAllDevices, 1000);
 
         // Function to restart IV monitoring
         async function restartIVMonitoring(deviceId) {
