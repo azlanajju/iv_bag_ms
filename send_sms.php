@@ -1,124 +1,41 @@
 <?php
-require_once 'config.php';
-require_once __DIR__ . '/vendor/autoload.php'; // Twilio SDK
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST');
+header('Access-Control-Allow-Headers: Content-Type');
+header('Content-Type: application/json');
 
-use Twilio\Rest\Client;
-
-// Function to send SMS using Twilio
-function sendSMS($phoneNumber, $message)
-{
-    // Your Twilio credentials
-    $accountSid = 'ACd9889979abc04d9714261e6a4c757f15';
-    $authToken = '61e8be9c9e473f0084e20bfc1aad2523';
-    $twilioNumber = '+916361557581'; // Your Twilio phone number in E.164 format
-
-    try {
-        // Initialize Twilio client
-        $client = new Client($accountSid, $authToken);
-
-        // Format phone number to E.164 format if needed
-        if (!preg_match('/^\+/', $phoneNumber)) {
-            $phoneNumber = '+' . $phoneNumber;
-        }
-
-        // Send SMS
-        $message = $client->messages->create(
-            $phoneNumber, // To
-            [
-                'from' => $twilioNumber,
-                'body' => $message
-            ]
-        );
-
-        return [
-            'success' => true,
-            'message_sid' => $message->sid,
-            'status' => $message->status
-        ];
-    } catch (Exception $e) {
-        return [
-            'success' => false,
-            'error' => $e->getMessage()
-        ];
-    }
-}
-
-// Handle POST request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    try {
-        // Get POST data
-        $data = json_decode(file_get_contents('php://input'), true);
+    $to = $_POST['to'] ?? '';
+    $message = $_POST['message'] ?? '';
 
-        if (!isset($data['deviceId']) || !isset($data['status'])) {
-            throw new Exception('Missing required parameters');
-        }
+    $account_sid = 'ACd0562d762f90fb280300df0fa07781c1';
+    $auth_token = '92cdab2925fbf46130c4771d0a74acdc';
+    $from_number = '+16516503374';
 
-        $deviceId = $data['deviceId'];
-        $status = $data['status'];
+    $url = "https://api.twilio.com/2010-04-01/Accounts/{$account_sid}/Messages.json";
 
-        // Get database connection
-        $conn = getDBConnection();
+    $data = array(
+        'To' => $to,
+        'From' => $from_number,
+        'Body' => $message
+    );
 
-        // Get device information
-        $stmt = $conn->prepare("SELECT DeviceName, NurseCallNumber FROM IV_Device_Info WHERE DeviceID = ?");
-        $stmt->execute([$deviceId]);
-        $device = $stmt->fetch(PDO::FETCH_ASSOC);
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_USERPWD, "{$account_sid}:{$auth_token}");
 
-        if (!$device) {
-            throw new Exception('Device not found');
-        }
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-        if (empty($device['NurseCallNumber'])) {
-            throw new Exception('Nurse phone number not configured');
-        }
-
-        // Prepare message based on status
-        $message = '';
-        if ($status === 'half') {
-            $message = "WARNING: IV Bag {$device['DeviceName']} (ID: $deviceId) has reached 50% of its initial weight. Please check the device.";
-        } elseif ($status === 'empty') {
-            $message = "CRITICAL: IV Bag {$device['DeviceName']} (ID: $deviceId) is now empty. Immediate attention required!";
-        } else {
-            throw new Exception('Invalid status');
-        }
-
-        // Send SMS using Twilio
-        $result = sendSMS($device['NurseCallNumber'], $message);
-
-        if (!$result['success']) {
-            throw new Exception('Failed to send SMS: ' . $result['error']);
-        }
-
-        // Return success response
-        header('Content-Type: application/json');
-        echo json_encode([
-            'success' => true,
-            'message' => 'SMS notification sent successfully',
-            'twilio' => [
-                'message_sid' => $result['message_sid'],
-                'status' => $result['status']
-            ],
-            'device' => [
-                'id' => $deviceId,
-                'name' => $device['DeviceName'],
-                'status' => $status
-            ]
-        ]);
-    } catch (Exception $e) {
-        // Return error response
-        header('Content-Type: application/json');
-        http_response_code(400);
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage()
-        ]);
+    if (curl_errno($ch)) {
+        echo json_encode(['error' => curl_error($ch)]);
+    } else {
+        echo $response;
     }
+
+    curl_close($ch);
 } else {
-    // Return method not allowed
-    header('Content-Type: application/json');
-    http_response_code(405);
-    echo json_encode([
-        'success' => false,
-        'error' => 'Method not allowed'
-    ]);
+    echo json_encode(['error' => 'Method not allowed']);
 }

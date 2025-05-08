@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>IV Bag Monitor</title>
+    <style>
+      :root {
+        --primary-green: #00ff9d;
+        --dark-bg: #1a1a1a;
+        --darker-bg: #ffff;
+        --card-bg: #242424;
+        --text-primary: #ffffff;
+        --text-secondary: #b3b3b3;
+        --success-green: #00ff9d;
+        --warning-yellow: #ffd700;
+        --danger-red: #ff4444;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        transition: all 0.3s ease;
+      }
+
+      body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        background: var(--dark-bg);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        color: var(--text-primary);
+        background-image: radial-gradient(circle at 10% 20%, rgba(0, 255, 157, 0.05) 0%, transparent 20%), radial-gradient(circle at 90% 80%, rgba(0, 255, 157, 0.05) 0%, transparent 20%);
+      }
+
+      .card {
+        background: var(--card-bg);
+        padding: 2.5rem;
+        border-radius: 1.5rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        text-align: center;
+        max-width: 400px;
+        width: 90%;
+        border: 1px solid rgba(0, 255, 157, 0.1);
+        backdrop-filter: blur(10px);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary-green), transparent);
+      }
+
+      h1 {
+        font-size: 2rem;
+        margin-bottom: 2rem;
+        color: var(--primary-green);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-weight: 600;
+      }
+
+      .label {
+        font-weight: 500;
+        margin-top: 1.5rem;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .value {
+        font-size: 2rem;
+        margin-top: 0.5rem;
+        color: var(--text-primary);
+        font-weight: 600;
+        text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+      }
+
+      .status {
+        margin-top: 1.5rem;
+        font-size: 1rem;
+        padding: 1rem;
+        border-radius: 1rem;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      }
+
+      .status.normal {
+        background: rgba(0, 255, 157, 0.1);
+        color: var(--success-green);
+        border: 1px solid rgba(0, 255, 157, 0.2);
+      }
+
+      .status.half {
+        background: rgba(255, 215, 0, 0.1);
+        color: var(--warning-yellow);
+        border: 1px solid rgba(255, 215, 0, 0.2);
+      }
+
+      .status.empty {
+        background: rgba(255, 68, 68, 0.1);
+        color: var(--danger-red);
+        border: 1px solid rgba(255, 68, 68, 0.2);
+      }
+
+      button {
+        margin-top: 2rem;
+        padding: 1rem 2rem;
+        border: none;
+        border-radius: 1rem;
+        background: linear-gradient(45deg, var(--primary-green), #00cc7e);
+        color: var(--darker-bg);
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 15px rgba(0, 255, 157, 0.3);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 255, 157, 0.4);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      button.monitoring {
+        background: linear-gradient(45deg, #ff4444, #cc0000);
+        box-shadow: 0 4px 15px rgba(255, 68, 68, 0.3);
+      }
+
+      button.monitoring:hover {
+        box-shadow: 0 6px 20px rgba(255, 68, 68, 0.4);
+      }
+
+      button.monitoring::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        animation: shine 2s infinite;
+      }
+
+      @keyframes shine {
+        100% {
+          left: 100%;
+        }
+      }
+
+      .status.final {
+        color: var(--danger-red);
+        font-weight: bold;
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      #smsStatus {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        border-radius: 1rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+      }
+
+      .sms-success {
+        background: rgba(0, 255, 157, 0.1);
+        color: var(--success-green);
+        border: 1px solid rgba(0, 255, 157, 0.2);
+      }
+
+      .sms-error {
+        background: rgba(255, 68, 68, 0.1);
+        color: var(--danger-red);
+        border: 1px solid rgba(255, 68, 68, 0.2);
+      }
+
+      /* Weight indicator animation */
+      .value {
+        position: relative;
+        display: inline-block;
+      }
+
+      .value::after {
+        content: "";
+        position: absolute;
+        bottom: -5px;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: var(--primary-green);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
+      }
+
+      .value:hover::after {
+        transform: scaleX(1);
+      }
+
+      /* Responsive design */
+      @media (max-width: 480px) {
+        .card {
+          padding: 1.5rem;
+        }
+
+        h1 {
+          font-size: 1.5rem;
+        }
+
+        .value {
+          font-size: 1.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>IV Bag Monitor</h1>
+
+      <div class="label">Initial Weight</div>
+      <div class="value" id="initial">-- kg</div>
+
+      <div class="label">Current Weight</div>
+      <div class="value" id="current">-- kg</div>
+
+      <div class="status normal" id="status">Waiting...</div>
+      <div id="smsStatus"></div>
+
+      <button id="monitorButton" onclick="toggleMonitoring()">Start Monitoring</button>
+    </div>
+
+    <script>
+      let initialWeight = null;
+      let finalWarningTriggered = false;
+      let buzzerTriggered = false;
+      let smsSent = {
+        half: false,
+        final: false,
+      };
+      let isMonitoring = false;
+
+      function toggleMonitoring() {
+        const button = document.getElementById("monitorButton");
+        if (!isMonitoring) {
+          startMonitoring();
+          button.textContent = "Stop Monitoring";
+          button.classList.add("monitoring");
+          isMonitoring = true;
+        } else {
+          stopMonitoring();
+          button.textContent = "Start Monitoring";
+          button.classList.remove("monitoring");
+          isMonitoring = false;
+        }
+      }
+
+      async function stopMonitoring() {
+        try {
+          // Reset all states
+          document.getElementById("status").innerText = "Monitoring Stopped";
+          document.getElementById("status").className = "status normal";
+          document.getElementById("current").innerText = "-- kg";
+          document.getElementById("initial").innerText = "-- kg";
+          initialWeight = null;
+          finalWarningTriggered = false;
+          buzzerTriggered = false;
+          smsSent = {
+            half: false,
+            final: false,
+          };
+        } catch (err) {
+          console.error("Failed to stop monitoring");
+        }
+      }
+
+      async function sendSMS(message) {
+        try {
+          const formData = new FormData();
+          formData.append("to", "+919845119468"); // Your recipient number
+          formData.append("message", message);
+
+          const response = await fetch("send_sms.php", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await response.json();
+          const smsStatus = document.getElementById("smsStatus");
+
+          if (data.error_code === null) {
+            smsStatus.innerHTML = `SMS sent successfully!`;
+            smsStatus.className = "sms-success";
+          } else {
+            smsStatus.innerHTML = `SMS failed: ${data.error_message || "Unknown error"}`;
+            smsStatus.className = "sms-error";
+          }
+        } catch (error) {
+          const smsStatus = document.getElementById("smsStatus");
+          smsStatus.innerHTML = `SMS failed: ${error.message}`;
+          smsStatus.className = "sms-error";
+        }
+      }
+
+      async function triggerBuzzer(duration = 2000) {
+        try {
+          await fetch("http://192.168.1.31/buzzon");
+          setTimeout(() => {
+            fetch("http://192.168.1.31/buzzoff");
+          }, duration);
+        } catch (err) {
+          console.error("Buzzer failed");
+        }
+      }
+
+      async function startMonitoring() {
+        try {
+          const res = await fetch("http://192.168.1.31/start");
+          const data = await res.json();
+          initialWeight = data.initial;
+          document.getElementById("initial").innerText = `${initialWeight} kg`;
+          document.getElementById("status").innerText = "Monitoring...";
+          document.getElementById("status").className = "status normal";
+          // Reset SMS sent flags
+          smsSent = {
+            half: false,
+            final: false,
+          };
+        } catch (err) {
+          alert("Failed to start monitoring");
+          // Reset button state if start fails
+          const button = document.getElementById("monitorButton");
+          button.textContent = "Start Monitoring";
+          button.classList.remove("monitoring");
+          isMonitoring = false;
+        }
+      }
+
+      async function updateStatus() {
+        try {
+          const res = await fetch("http://192.168.1.31/status");
+          const data = await res.json();
+          document.getElementById("current").innerText = `${data.weight} kg`;
+          document.getElementById("initial").innerText = `${data.initial} kg`;
+
+          const statusEl = document.getElementById("status");
+          const remaining = (data.weight / data.initial) * 100;
+
+          if (remaining <= 20 && !finalWarningTriggered) {
+            statusEl.innerText = "Final Warning: Bag Nearly Empty";
+            statusEl.className = "status final";
+            triggerBuzzer(10000); // 10 sec buzz
+            finalWarningTriggered = true;
+
+            // Send SMS for final warning
+            if (!smsSent.final) {
+              sendSMS("URGENT: IV Bag is nearly empty! Final warning triggered. Please attend immediately.");
+              smsSent.final = true;
+            }
+          } else if (data.status === "Half Finished") {
+            statusEl.innerText = data.status;
+            statusEl.className = "status half";
+            if (!buzzerTriggered) {
+              triggerBuzzer();
+              buzzerTriggered = true;
+
+              // Send SMS for half finished
+              if (!smsSent.half) {
+                sendSMS("Alert: IV Bag is half finished. Please prepare a refill.");
+                smsSent.half = true;
+              }
+            }
+          } else if (data.status === "Almost Empty") {
+            statusEl.innerText = data.status;
+            statusEl.className = "status empty";
+          } else {
+            statusEl.innerText = data.status;
+            statusEl.className = "status normal";
+            buzzerTriggered = false;
+            finalWarningTriggered = false;
+          }
+        } catch (err) {
+          console.error("Status fetch failed");
+        }
+      }
+
+      setInterval(updateStatus, 1000);
+      updateStatus();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Twilio SMS Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 20px auto;
+        padding: 20px;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+      }
+      input,
+      textarea {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      button {
+        background-color: #4caf50;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+      #status {
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 4px;
+      }
+      .success {
+        background-color: #dff0d8;
+        color: #3c763d;
+      }
+      .error {
+        background-color: #f2dede;
+        color: #a94442;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Send SMS using Twilio</h2>
+    <form id="smsForm">
+      <div class="form-group">
+        <label for="to">To Number:</label>
+        <input type="tel" id="to" value="+919845119468" required />
+      </div>
+      <div class="form-group">
+        <label for="message">Message:</label>
+        <textarea id="message" required>Hello from Twilio!</textarea>
+      </div>
+      <button type="submit">Send SMS</button>
+    </form>
+
+    <div id="status"></div>
+
+    <script>
+      document.getElementById("smsForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const statusDiv = document.getElementById("status");
+        statusDiv.innerHTML = "Sending message...";
+        statusDiv.className = "";
+
+        try {
+          const formData = new FormData();
+          formData.append("to", document.getElementById("to").value);
+          formData.append("message", document.getElementById("message").value);
+
+          const response = await fetch("send_sms.php", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await response.json();
+
+          if (data.error_code === null) {
+            statusDiv.innerHTML = `
+              <p>Message sent successfully!</p>
+              <p>Status: ${data.status}</p>
+              <p>SID: ${data.sid}</p>
+            `;
+            statusDiv.className = "success";
+          } else {
+            statusDiv.innerHTML = `<p>Error: ${data.error_message || "Failed to send message"}</p>`;
+            statusDiv.className = "error";
+          }
+        } catch (error) {
+          statusDiv.innerHTML = `<p>Error: ${error.message}</p>`;
+          statusDiv.className = "error";
+        }
+      });
+    </script>
+  </body>
+</html>
